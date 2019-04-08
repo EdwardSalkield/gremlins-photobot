@@ -1,0 +1,4 @@
+Get timestamp from uploaded photos
+Test for duplicate photos
+Deleting owned photos?
+Creating albums

@@ -1,0 +1,45 @@
+<!doctype html>
+
+<html>
+	<head>
+		<title>Gremlins Photobot</title>
+	</head>
+	<body>
+		<h1>Gremlins Photobot</h1>
+		<h2>Metadata</h2>
+		{% for mdata in metadata %}
+			<p><b>{{ mdata[0] }}</b>: {{ mdata[1] }}</p>
+		{% endfor %}
+
+		<h2>Upload Photos</h2>
+		<form method=post enctype=multipart/form-data>
+			<p><input type=file name=file>
+			<input type=submit value=Upload>
+		</form>
+
+		<h2>Browse Photos</h2>
+		<table style="width:100%">
+			<tr>
+				{% for col in cols %}
+					<td><b>{{ col }}</b></td>                                       
+				{% endfor %}
+			</tr>
+
+			{% for data in photodata %}
+				<tr>
+					{% for datum in data[1] %}
+						{% if cols[loop.index0] == "Display Name" %}
+						<td><a href="/static/photos/{{ albumname }}/{{ data[0] }}">{{ datum }}</a></td>
+						{% else %}
+							<td>{{ datum }}</td>
+						{% endif %}
+					{% endfor %}
+				</tr>
+			{% endfor %}
+		</table>
+				
+
+
+
+	</body>
+</html>
