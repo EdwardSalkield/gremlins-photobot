@@ -279,6 +279,11 @@ try:
 except KeyError:
     PHOTO_LOCATION = STATIC_LOCATION + "photos/"
 
+try:
+    URL_BASE_PATH = app.config['URL_BASE_PATH']
+except KeyError:
+    URL_BASE_PATH = ""
+
 
 
 ALBUMCOLS = ["Display Name", "Creator", "Date", "Number of Photos", "Last Modified", "Restricted"]
@@ -307,7 +312,7 @@ def is_authenticated(session):
         return False
 
 
-@app.route("/login", methods=['GET', 'POST'])
+@app.route(URL_BASE_PATH + "/login", methods=['GET', 'POST'])
 def login():
     name = authenticate(request)
     if name == None:
@@ -317,7 +322,7 @@ def login():
     return redirect(url_for('index'))
 		
 
-@app.route("/", methods=['GET', 'POST'])
+@app.route(URL_BASE_PATH + "/", methods=['GET', 'POST'])
 def index():
     if not is_authenticated(session):
         return render_template("invalid_token.html", token="")
@@ -350,13 +355,13 @@ def index():
         return redirect(url_for('albumpage', albumname=albumname))
 
 
-@app.route("/logout")
+@app.route(URL_BASE_PATH + "/logout")
 def logout():
     session.pop('name', None)
     session.pop('auth', None)
     return "Logged out successfully."
 
-@app.route("/albums/<albumname>", methods=['GET', 'POST'])
+@app.route(URL_BASE_PATH + "/albums/<albumname>", methods=['GET', 'POST'])
 def albumpage(albumname):
     if not is_authenticated(session):
         return render_template("invalid_token.html", token="")
@@ -397,7 +402,7 @@ def albumpage(albumname):
         return redirect(url_for('albumpage', albumname=albumname))
 
 
-@app.route("/admin", methods=['GET', 'POST'])
+@app.route(URL_BASE_PATH + "/admin", methods=['GET', 'POST'])
 def adminpage():
     try:
         name = session["name"]

@@ -39,6 +39,7 @@ PHOTO_LOCATION | The subdirectory of STATIC_LOCATION to store albums.
 USER_FILE_LOCATION | The name of the user config file.
 ALLOWED_EXTENSIONS | The allowed filetypes for upload.
 DATE_FORMAT | The date format to be displayed.
+URL_BASE_PATH | The base path for the url of the server.
 
 For more details, see the [flask builtin configuration values](http://flask.pocoo.org/docs/0.12/config/#builtin-configuration-values).
 
