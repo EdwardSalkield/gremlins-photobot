@@ -33,7 +33,7 @@
 				<tr>
 					{% for datum in data[1] %}
 						{% if cols[loop.index0] == "Display Name" %}
-						<td><a href="{{ photolocation }}{{ albumname }}/{{ data[0] }}">{{ datum }}</a></td>
+						<td><a href="{{ urlbasepath }}{{ photolocation }}{{ albumname }}/{{ data[0] }}">{{ datum }}</a></td>
 						{% else %}
 							<td>{{ datum }}</td>
 						{% endif %}

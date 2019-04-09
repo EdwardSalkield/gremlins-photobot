@@ -244,6 +244,7 @@ class photomanager():
 
 
 app = Flask(__name__)
+
 try:
     app.config.from_envvar('GREMLINS_PHOTOBOT_SETTINGS')
 except Exception:
@@ -331,7 +332,7 @@ def index():
 
     if request.method == 'GET':
         table = photoman.sortalbumrecord("Date", reverse=True)
-        return render_template("index.html", name=name, cols=ALBUMCOLS, table=table)
+        return render_template("index.html", name=name, cols=ALBUMCOLS, table=table, urlbasepath=URL_BASE_PATH)
 
     elif request.method == 'POST':
         #try:
@@ -377,7 +378,7 @@ def albumpage(albumname):
         
         metadata = zip(ALBUMCOLS, photoman.cacherecord[albumname])
         photodata = photoman.sortby(photoman.getalbumphotodata(albumname), "Date", True, PHOTOCOLS)
-        return render_template("album.html", albumname=albumname, metadata=metadata, cols=PHOTOCOLS, photodata=photodata, photolocation = "/static/" + PHOTO_RELATIVE_LOCATION)
+        return render_template("album.html", albumname=albumname, metadata=metadata, cols=PHOTOCOLS, photodata=photodata, photolocation = "/static/" + PHOTO_RELATIVE_LOCATION, urlbasepath=URL_BASE_PATH)
 
     # Allow file uploads
     if request.method == 'POST':

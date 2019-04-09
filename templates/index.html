@@ -10,7 +10,7 @@
 		<p>gremlins-photobot is a free as in freedom server systen for collating photos with friends.</p>
 		<p><a href="https://github.com/EdwardSalkield/gremlins-photobot">source</a>.    Submit a PR to help me with the stylesheets!</p>
 		<h2>Welcome {{name}}</h2>
-		<a href="/logout">Log out</a>
+		<a href="{{ urlbasepath }}/logout">Log out</a>
 		<p>Upload and collate our collective photos together! P.S. no Zucceronis here</p>
 
 		<h2>New Album</h2>
@@ -34,7 +34,7 @@
 					<tr>
 					{% for data in row[1] %}
 						{% if cols[loop.index0] == "Display Name" %}
-						<td><a href="/albums/{{ row[0] }}">{{ data }}</a></td>
+						<td><a href="{{ urlbasepath }}/albums/{{ row[0] }}">{{ data }}</a></td>
 						{% else %}
 							<td>{{ data }}</td>
 						{% endif %}
