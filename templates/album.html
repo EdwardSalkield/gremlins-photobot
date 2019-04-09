@@ -2,6 +2,7 @@
 
 <html>
 	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<title>Gremlins Photobot</title>
 	</head>
 	<body>
@@ -12,10 +13,13 @@
 		{% endfor %}
 
 		<h2>Upload Photos</h2>
-		<form method=post enctype=multipart/form-data>
-			<p><input type=file name=file>
-			<input type=submit value=Upload>
-		</form>
+		<div>
+			<form method=post enctype=multipart/form-data>
+				<input type=file name=file multiple=multiple>
+				<input type=text name=photoname placeholder="Photo name (optional)">
+				<input type=submit value=Upload>
+			</form>
+		</div>
 
 		<h2>Browse Photos</h2>
 		<table style="width:100%">

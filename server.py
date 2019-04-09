@@ -1,10 +1,12 @@
 import json
 import os.path
+import os
 import sys
 import datetime
 from werkzeug.utils import secure_filename
-import imghdr
-from flask import Flask, render_template, request, redirect
+import urllib.parse
+from exif import Image
+from flask import Flask, render_template, request, redirect, session, url_for
 app = Flask(__name__)
 
 class jsonmanager():
@@ -50,14 +52,17 @@ class photomanager():
     metaname = "meta.json"
     cacherecord = {}
     ALLOWED_EXTENSIONS = set([])
+    ALBUMCOLS = []
+    PHOTOCOLS = []
 
-    def __init__(self, PHOTOPATH, cols, ALLOWED_EXTENSIONS, DATE_FORMAT):
+    def __init__(self, PHOTOPATH, PHOTOCOLS, ALBUMCOLS, ALLOWED_EXTENSIONS, DATE_FORMAT):
         if not os.path.exists(PHOTOPATH):
             os.makedirs(PHOTOPATH)
         self.PHOTOPATH = PHOTOPATH
         self.ALLOWED_EXTENSIONS = ALLOWED_EXTENSIONS
         self.DATE_FORMAT = DATE_FORMAT
-        self.cols = cols
+        self.PHOTOCOLS = PHOTOCOLS
+        self.ALBUMCOLS = ALBUMCOLS
 
         self.reindex()
 
@@ -65,15 +70,25 @@ class photomanager():
     def resetalbumrecord(self):
         self.cacherecord = {}
         for albumname, albumdata in self.cache.items():
-            self.cacherecord[albumname] = [albumdata[col] for col in self.cols]
+            try:
+                self.cacherecord[albumname] = [albumdata[col] for col in self.ALBUMCOLS]
+            except KeyError:
+                continue
 
 
     # Index the currently stored albums
-    def reindex(self):
-        self.cache = {}
+    def reindex(self, album=None):
 
-        for albumname in os.listdir(self.PHOTOPATH):
+        if album == None:
+            self.cache = {}
+            albums = os.listdir(self.PHOTOPATH)
+        else:
+            albums = [album]
+
+        for albumname in albums:
             fullpath = os.path.join(self.PHOTOPATH, albumname, self.metaname)
+            ALBUMCOLS = []
+            PHOTOCOLS = []
 
             if os.path.isfile(fullpath):
                 with open(fullpath, 'r') as f:
@@ -83,14 +98,23 @@ class photomanager():
 
 
     def setalbumdata(self, albumname, albumdata):
-        cache[albumname] = albumdata
+        self.cache[albumname] = albumdata
         
-        with open(os.path.join(self.PHOTOPATH, albumname, self.metaname), 'r+') as f:
-            album = json.load(f)
-            album["meta"] = albumdata
-            json.dump(album, f)
+        metapath = os.path.join(self.PHOTOPATH, albumname, self.metaname)
+        if os.path.exists(metapath):
+            with open(metapath, 'r+') as f:
+                album = json.load(f)
+                album["meta"] = albumdata
+                json.dump(album, f)
 
-        record = [albumdata[col] for col in self.cols]
+        else:
+            with open(metapath, 'w') as f:
+                album = {"meta": {}, "photos": {}}
+                album["meta"] = albumdata
+                json.dump(album, f)
+
+
+        record = [albumdata[col] for col in self.ALBUMCOLS]
         self.cacherecord[albumname] = record
 
 
@@ -100,16 +124,16 @@ class photomanager():
         except KeyError:
             return None
 
-    def sortby(self, d, sortby, reverse):
+    def sortby(self, d, sortby, reverse, cols):
         cacherecord = list(d.items())
-        cacherecord.sort(key = lambda x: x[1][self.cols.index(sortby)])
+        cacherecord.sort(key = lambda x: x[1][cols.index(sortby)])
         if reverse:
             return cacherecord[::-1]
         return cacherecord
 
 
     def sortalbumrecord(self, sortby, reverse=False):
-        return self.sortby(self.cacherecord, sortby, reverse)
+        return self.sortby(self.cacherecord, sortby, reverse, self.ALBUMCOLS)
 
 
     def getalbumphotodata(self, albumname):
@@ -119,7 +143,7 @@ class photomanager():
         photorecords = {}
         for photoname, photodata in photodata.items():
             
-            photorecords[photoname] = [photodata[col] for col in self.cols]
+            photorecords[photoname] = [photodata[col] for col in self.PHOTOCOLS]
 
         return photorecords
 
@@ -127,24 +151,54 @@ class photomanager():
         return '.' in filename and \
                filename.rsplit('.', 1)[1].lower() in self.ALLOWED_EXTENSIONS
 
+    # Create new photoalbum
+    def createalbum(self, albumname, displayname, creator, date, restricted):
+        albumpath = os.path.join(self.PHOTOPATH, albumname)
+        
+        # Create album directory
+        if os.path.exists(albumpath):
+            raise ValueError("Album of this name already exists!")
+        
+        os.makedirs(albumpath)
 
-    def createphoto(self, photo, albumname, photoname, displayname, creator, date):
+        # Create metadata
+        metadata = {}
+        metadata["Display Name"] = displayname
+        metadata["Creator"] = creator
+        metadata["Date"] = date
+        metadata["Number of Photos"] = 0
+        metadata["Last Modified"] = "Never"
+        metadata["Restricted"] = displayname
+
+        self.setalbumdata(albumname, metadata)
+
+
+
+    def createphoto(self, photo, albumname, photoname, displayname, creator):
         # Test for correct file extension
         if not self.allowed_file(photoname):
             return None
 
-        # Test that the file is an image
-        #photo.save("./tmpimage")
-        #if imghdr.what("./tmpimage") == None:
-        #    os.remove("./tmpimage")
-        #    return None
-        
-        # Save the photo
-        #os.rename("./tmpimage", os.path.join(self.PHOTOPATH, albumname, photoname))
-        photo.save(os.path.join(self.PHOTOPATH, albumname, photoname))
+        photopath = os.path.join(self.PHOTOPATH, albumname, photoname)
+        # Test if the file exists
+        if os.path.exists(photopath):
+            return
+
+
+        photo.save(photopath)
+
+        # Get the photo timestamp
+        with open(photopath, 'rb') as image_file:
+            try:
+                image = Image(image_file)
+                date = image.datetime.replace(':', '-')
+            except Exception:
+                date = ""
+
 
         # Update the album metadata
-        with open(os.path.join(self.PHOTOPATH, albumname, self.metaname), 'r') as f:
+        albumpath = os.path.join(self.PHOTOPATH, albumname, self.metaname)
+        with open(albumpath, 'r') as f:
             metadata = json.load(f)
 
         metadata["photos"][photoname] = {}
@@ -152,22 +206,27 @@ class photomanager():
         metadata["photos"][photoname]["Creator"] = creator
         metadata["photos"][photoname]["Date"] = date
         metadata["photos"][photoname]["Last Modified"] = datetime.datetime.now().strftime(self.DATE_FORMAT)
-        with open(os.path.join(self.PHOTOPATH, albumname, self.metaname), 'w') as f:
+        metadata["meta"]["Number of Photos"] += 1
+        metadata["meta"]["Last Modified"] = datetime.datetime.now().strftime(self.DATE_FORMAT)
+
+
+        with open(albumpath, 'w') as f:
             json.dump(metadata, f)
-    
-        return True
+
+        self.reindex(albumname)
 
 
 
 
 PHOTOPATH = "./static/photos/"
 USERFILE = "users.json"
+ALBUMCOLS = ["Display Name", "Creator", "Date", "Number of Photos", "Last Modified", "Restricted"]
 PHOTOCOLS = ["Display Name", "Creator", "Date", "Last Modified"]
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
-DATE_FORMAT = "%Y-%m-%d"
+DATE_FORMAT = "%Y-%m-%d %H-%M-%S"
 
 userman = usermanager('', USERFILE)
-photoman = photomanager(PHOTOPATH, PHOTOCOLS, ALLOWED_EXTENSIONS, DATE_FORMAT)
+photoman = photomanager(PHOTOPATH, PHOTOCOLS, ALBUMCOLS, ALLOWED_EXTENSIONS, DATE_FORMAT)
 
 
 def authenticate(request):
@@ -182,43 +241,104 @@ def authenticate(request):
 
     return name
 
+def is_authenticated(session):
+    try:
+        return session['auth'] == True and session['name'] != None
+    except KeyError:
+        return False
 
-@app.route("/", methods=['GET'])
-def index():
+
+@app.route("/login", methods=['GET', 'POST'])
+def login():
     name = authenticate(request)
     if name == None:
         return render_template("invalid_token.html", token="")
+    session['name'] = name
+    session['auth'] = True
+    return redirect(url_for('index'))
+		
 
-    table = photoman.sortalbumrecord("Date", reverse=True)
-    return render_template("index.html", name=name, cols=PHOTOCOLS, table=table)
+@app.route("/", methods=['GET', 'POST'])
+def index():
+    if not is_authenticated(session):
+        return render_template("invalid_token.html", token="")
 
+    name = session['name']
+
+    if request.method == 'GET':
+        table = photoman.sortalbumrecord("Date", reverse=True)
+        return render_template("index.html", name=name, cols=ALBUMCOLS, table=table)
+
+    elif request.method == 'POST':
+        #try:
+        displayname = request.form['name']
+        date = request.form['date']
+        try:
+            request.form['restricted']
+            restricted = True
+        except KeyError:
+            restricted = False
+        #except KeyError:
+        #    return "Malformatted form."
+
+        albumname = urllib.parse.quote(displayname.lower().replace(" ", "_"))
+
+        try:
+            photoman.createalbum(albumname, displayname, name, date, restricted)
+        except ValueError as e:
+            return str(e)
+
+        return redirect(url_for('albumpage', albumname=albumname))
+
+
+@app.route("/logout")
+def logout():
+    session.pop('name', None)
+    session.pop('auth', None)
+    return "Logged out successfully."
 
 @app.route("/albums/<albumname>", methods=['GET', 'POST'])
 def albumpage(albumname):
-    # Token authentication
-    name = authenticate(request)
-    if name == None:
+    if not is_authenticated(session):
         return render_template("invalid_token.html", token="")
+
+    name = session['name']
 
     # Display the album page
     if request.method == 'GET':
         if not albumname in photoman.cache.keys():
             return "404 - album not found"
         
-        metadata = zip(PHOTOCOLS, photoman.cacherecord[albumname])
-        photodata = photoman.sortby(photoman.getalbumphotodata(albumname), "Date", reverse=True)
+        metadata = zip(ALBUMCOLS, photoman.cacherecord[albumname])
+        photodata = photoman.sortby(photoman.getalbumphotodata(albumname), "Date", True, PHOTOCOLS)
         return render_template("album.html", albumname=albumname, metadata=metadata, cols=PHOTOCOLS, photodata=photodata)
 
     # Allow file uploads
     if request.method == 'POST':
-        for displayname, f in request.files.items():
+        photoname = request.form["photoname"]
+
+        files = request.files.getlist("file")
+
+        for i, f in enumerate(files):
+            if photoname == "":
+                pname = f.filename
+            else:
+                pname = photoname
+                if i > 0:
+                    pname = pname + '_' + str(i)
+
             # Sanitise filename and save
-            ret = photoman.createphoto(f, albumname, secure_filename(f.filename), f.filename, name, "")
-            if ret == None:
-                return "Upload unsuccessful"
+            try:
+                photoman.createphoto(f, albumname, secure_filename(f.filename), pname, name)
+            except ValueError as e:
+                return str(e)
 
-        return "Upload successful"
+        return redirect(url_for('albumpage', albumname=albumname))
 
+# 404 page
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
 
-
+app.secret_key = os.urandom(24)
 
