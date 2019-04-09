@@ -81,4 +81,4 @@ From here, the server cache can be reset.
 
 
 ## License
-This project is licensed under GPLv3 - see the LICENSE.md file for details.
+This project is licensed under GPLv3 - see the COPYING file for details.
