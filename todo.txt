@@ -1,2 +1,5 @@
 Deleting owned photos?
 Restricted and unrestricted albums
+Admin page user list management, last logged on stats etc.
+Advertise feature requests on GitHub.
+file size metadata

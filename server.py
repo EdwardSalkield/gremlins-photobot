@@ -346,7 +346,7 @@ def index():
         #except KeyError:
         #    return "Malformatted form."
 
-        albumname = urllib.parse.quote(displayname.lower().replace(" ", "_").replace("/", ""))
+        albumname = displayname.lower().replace(" ", "_").replace("/", "")
 
         try:
             photoman.createalbum(albumname, displayname, name, date, restricted)
