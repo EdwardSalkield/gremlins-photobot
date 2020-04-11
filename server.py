@@ -285,6 +285,15 @@ try:
 except KeyError:
     URL_BASE_PATH = ""
 
+try:
+    HOST = app.config['HOST']
+except KeyError:
+    HOST = 'localhost'
+
+try:
+    PORT = app.config['PORT']
+except KeyError:
+    PORT = '8080'
 
 
 ALBUMCOLS = ["Display Name", "Creator", "Date", "Number of Photos", "Last Modified", "Restricted"]
@@ -452,4 +461,4 @@ if __name__ == '__main__':
     # Configure flask
 
     
-    app.run()
+    app.run(host=HOST, port=PORT)
