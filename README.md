@@ -20,6 +20,7 @@ Either use packages from your distro's repositories (preferrred), or use pip:
 4. Configure the server
 
 **Setting up the config file**
+
 _server.conf_ is the default configuration file. Within it, you can configure attributes such as the server hostname, port to bind to, and location of the photos directory (see next section).
 
 The location of the config file can be configured with the environment variable _GREMLINS\_PHOTOBOT\_SETTINGS:
